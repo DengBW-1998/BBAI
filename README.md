@@ -8,10 +8,10 @@ If you have any question or you find any bug about codes, please contact me at w
 
 
 Some code blocks copy from the following papers:
-> Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
-> Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
-> Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
-> Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
+- Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
+- Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
+- Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
+- Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
 
 ## Environment settings
 
