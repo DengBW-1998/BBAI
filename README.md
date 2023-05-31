@@ -2,7 +2,7 @@
 
 This repository contains the demo code of the paper: 
 
-> Bipartite Graph Adversarial Attacks Based on Implicit Relations. 
+> Unsupervised Bipartite Graph Adversarial Attacks Based on Implicit Relations  
 
 If you have any question or you find any bug about codes, please contact me at xxx(anonymous now).
 
