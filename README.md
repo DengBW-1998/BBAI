@@ -2,9 +2,9 @@
 
 This repository contains the demo code of the paper: 
 
-> Bipartite Graph Adversarial Attacks Based on Implicit Relations. Bowen Deng, Lin Feng
+> Bipartite Graph Adversarial Attacks Based on Implicit Relations. 
 
-If you have any question or you find any bug about codes, please contact me at wy727100600@163.com
+If you have any question or you find any bug about codes, please contact me at xxx(anonymous now).
 
 
 Some code blocks copy from the following papers:
