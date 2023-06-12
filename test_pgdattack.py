@@ -65,11 +65,7 @@ def preprocess(adj, features, labels, preprocess_adj=False, preprocess_feature=F
 
     return adj, features, labels
 
-embedding_u = deepwalk_skipgram(adj_matrix=adj[:u,u:]@adj[u:,:u], embedding_dim=32, window_size=5)
-embedding_v = deepwalk_skipgram(adj_matrix=adj[u:,:u]@adj[:u,u:], embedding_dim=32, window_size=2)
-embedding_imp = np.row_stack((embedding_u,embedding_v))
-embedding_exp = deepwalk_skipgram(adj_matrix=adj, embedding_dim=32, window_size=5)
-features = (embedding_imp+embedding_exp)/2
+features = np.ones((adj.shape[0],32))
 features = sp.csr_matrix(features)
     
 idx = np.arange(adj.shape[0])
