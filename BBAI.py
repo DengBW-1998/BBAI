@@ -23,6 +23,7 @@ rate=-1
 train_model='bgnn'
 data=open("BBAI_pubmed.txt",'w+')
 
+#The next 8 lines should be used in Baseline Experience and be noted in Ablation Experience.
 if dataset=='dblp':
     n_flips=90//iteration
     rate=5

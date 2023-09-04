@@ -2,16 +2,20 @@
 
 This repository contains the demo code of the paper: 
 
-> Unsupervised Bipartite Graph Adversarial Attacks Based on Implicit Relations.
+> Graph Adversarial Black-Box Attacks Based on Implicit Relations. 
 
-If you have any question or you find any bug about codes, please contact me at xxx(anonymous now).
+If you have any question or you find any bug about codes, please contact me at wy727100600@163.com
 
 
-Some code blocks copy from the following papers:
-- Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
-- Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
-- Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
-- Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
+Some code blocks are copied from the following papers:
+> Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
+> Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
+> Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
+> Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
+> Adversarial attack on network embeddings via supervised network poisoning. Gupta V, Chakraborty T.
+> Revisiting graph adversarial attack and defense from a data distribution perspective. Li K, Liu Y, Ao X, et al.
+> Cascade-BGNN: Toward Efficient Self-supervised Representation Learning on Large-scale Bipartite Graphs. Chaoyang He, Tian Xie, Yu Rong, et al.
+
 
 ## Environment settings
 
@@ -23,18 +27,17 @@ Some code blocks copy from the following papers:
 - gensim==3.8.3
 
 
-
 ## Basic Usage
 
 **Usage**
 
-If you want to run UBAI：
-- python UBAI.py
+If you want to run BBAI：
+- python BBAI.py
 
 If you want to play ablation experiments:
-- python UBAI_exp_abs.py
-- python UBAI_exp_app.py
-- python UBAI_imp_abs.py
+- python BBAI_exp_abs.py
+- python BBAI_exp_app.py
+- python BBAI_imp_abs.py
 
 If you want to play baselines:
 - python cln.py
@@ -42,14 +45,17 @@ If you want to play baselines:
 - python test_dice.py
 - python test_metattack.py
 - python test_pgdattack.py
+- python test_viking.py
+- python test_HA.py
+
+If you want to calculate the parameter alpha of degree distribution:
+- python alpha_calculation.py
 
 
-**Main Hyperparameters:**
+## Main Hyperparameters
 
-You can adjust hyperparameters in the source code files directly.
+**Ablation Experience**
+- n_flips*iteration is the actual num of perturbation
 
-- Changing datasets: Copy the file "UBAI/codes/dblp/testModel.py" or "UBAI/codes/wiki/testModel.py" into the dirctory "UBAI/codes"
-
-- You can adjust the rate of subgraph in "testModel.py".
-
-- You can adjust other hyperparameters in "UBAI.py"(also "UBAI_exp_abs.py" or "test_metattack.py" etc.)
+**Baseline Experience**
+- the actual num of perturbation is set automatically
