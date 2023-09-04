@@ -9,11 +9,11 @@ Copyright (C) owned by the authors, 2019
 """
 
 import warnings
-
 import numpy as np
 import numba
 import scipy.sparse as sp
-
+import pandas as pd
+from deeprobust.graph.data import Dataset
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import normalize
 from sklearn.metrics import f1_score, roc_auc_score, average_precision_score
@@ -98,7 +98,7 @@ def generate_candidates_removal(adj_matrix, seed=0):
         (np.arange(n_nodes), np.fromiter(map(np.random.choice, adj_matrix.tolil().rows), dtype=np.int)))
 
     adj_hidden = edges_to_sparse(hiddeen, adj_matrix.shape[0])
-    adj_hidden = adj_hidden.maximum(adj_hidden.T)#保证对称性
+    adj_hidden = adj_hidden.maximum(adj_hidden.T)
 
     adj_keep = adj_matrix - adj_hidden
 
@@ -159,8 +159,7 @@ def evaluate_embedding_link_prediction(adj_matrix, node_pairs, embedding_matrix,
         Embedding matrix
     :param norm: bool
         Whether to normalize the embeddings
-    :return: float, float
-        Average precision (AP) score and area under ROC curve (AUC) score
+    :return: (AUC) score
     """
     if norm:
         embedding_matrix = normalize(embedding_matrix)
@@ -554,3 +553,34 @@ def standardize(adj_matrix):
     standardized_adj_matrix = standardized_adj_matrix.maximum(standardized_adj_matrix.T)       
 
     return standardized_adj_matrix
+
+def getAttribut(u,v,dataset):
+    if dataset=='pubmed':
+        data = Dataset(root='./data/', name=dataset, setting='nettack')
+        f=np.array(data.features.todense())
+        emb0_u=f[:u]
+        emb0_v=f[u:u+v]
+        dim=f.shape[1]
+        return emb0_u,emb0_v,(int)(dim),(int)(dim)
+    if dataset=='dblp':
+        data_u=pd.read_csv('./data/dblp/vectors_u.dat',sep=' ',header=None).to_numpy()
+        data_v=pd.read_csv('./data/dblp/vectors_v.dat',sep=' ',header=None).to_numpy()
+    if dataset=='wiki':
+        data_u=pd.read_csv('./data/wiki/vectors_u.dat',sep=' ',header=None).to_numpy()
+        data_v=pd.read_csv('./data/wiki/vectors_v.dat',sep=' ',header=None).to_numpy()
+    line_u=data_u.shape[0]
+    line_v=data_v.shape[0]
+    dim_u=data_u.shape[1]-2
+    dim_v=data_v.shape[1]-2
+    emb0_u=np.zeros((u,dim_u)).astype(np.float32)
+    emb0_v=np.zeros((v,dim_v)).astype(np.float32)
+    for i in range(line_u):
+        line=(int)(data_u[i,0][1:])
+        if (line<u):
+            emb0_u[line,:]=data_u[i,1:-1]
+    for i in range(line_v):
+        line=int(data_v[i,0][1:])
+        if (line<v):
+            emb0_v[line,:]=data_v[i,1:-1]
+    return emb0_u,emb0_v,(int)(dim_u),(int)(dim_v)
+   
