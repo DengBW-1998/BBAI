@@ -11,14 +11,37 @@ from codes.embedding import *
 from codes.perturbation_attack import *
 from codes.testModel import *
 import time
-from deeprobust.graph.defense import GCN
+import deeprobust.graph.defense as dr
 from Dice.dice import DICE
 from sklearn.model_selection import train_test_split
+from BGNN.bgnn_adv import *
+from BGNN.bgnn_mlp import *
 
-_,adj,gul = getAdj(0)
+
+n_flips = -1 #Perturbation number
+dim = 64 
+window_size = 5 
+n_node_pairs = 100000 
+seed=2
+threshold = 5 #Implicit relationship threshold
+dataset='pubmed'
+rate=-1
+train_model='bgnn'
+batch_size=64
+data=open("dice_pubmed.txt",'w+')
+
+if dataset=='dblp':
+    n_flips=90
+    rate=5
+if dataset=='wiki':
+    n_flips=180
+    rate=10
+if dataset=='pubmed':
+    n_flips=70
+ 
+adj_nn,adj,u,v = getAdj(threshold,dataset,rate)
 adj = standardize(adj)
-u = gul.u_nodes
-v = gul.v_nodes
+emb0_u,emb0_v,dim_u,dim_v = getAttribut(u,v,dataset)
 time_start=time.time()
 
 labels = np.zeros((u+v))
@@ -69,31 +92,26 @@ def preprocess(adj, features, labels, preprocess_adj=False, preprocess_feature=F
 idx = np.arange(adj.shape[0])
 idx_train, idx_val, idx_test = get_train_val_test(idx, train_size, val_size, test_size, stratify=labels)
 idx_unlabeled = np.union1d(idx_val, idx_test)
-perturbations = 180 #Perturbation number
 
 features = np.ones((adj.shape[0],32))
 features = sp.csr_matrix(features)
 
 device = 'cpu'
-surrogate = GCN(nfeat=32, nclass=2,
+surrogate = dr.GCN(nfeat=32, nclass=2,
             nhid=16, dropout=0, with_relu=False, with_bias=False, device=device).to(device)
 surrogate.fit(features, adj, labels, idx_train, idx_val, patience=30)
 
 model = DICE(surrogate, nnodes=adj.shape[0],
     attack_structure=True, attack_features=False, device=device).to(device)
     
-model.attack(adj, labels, n_perturbations=perturbations)
+model.attack(adj, labels, n_perturbations=n_flips)
 time_end=time.time()
 print(time_end-time_start)
-data=open("dice.txt",'w+')
+
 print(time_end-time_start,file=data)  
 
 adj_matrix_flipped = sp.csr_matrix(model.modified_adj)
 
-dim = 64 
-window_size = 5 
-n_node_pairs = 100000 
-seed=2
 for _ in range(5): 
     u_node_pairs = np.random.randint(0, u-1, [n_node_pairs*2, 1])
     v_node_pairs = np.random.randint(u, u+v-1, [n_node_pairs*2, 1])
@@ -102,12 +120,16 @@ for _ in range(5):
     adj_matrix_flipped[:u,:u]=0
     adj_matrix_flipped[u:,u:]=0
 
-    #svd
-    embedding_u, _, _, _ = deepwalk_svd(adj_matrix_flipped[:u,u:]@adj_matrix_flipped[u:,:u], window_size, dim)
-    embedding_v, _, _, _ = deepwalk_svd(adj_matrix_flipped[u:,:u]@adj_matrix_flipped[:u,u:], window_size, dim)
-    embedding_imp = np.row_stack((embedding_u,embedding_v))
-    embedding_exp, _, _, _ = deepwalk_svd(adj_matrix_flipped, window_size, dim)
-    embedding = (embedding_imp+embedding_exp)/2
+    if train_model=='netmf':
+        embedding_u, _, _, _ = deepwalk_svd(adj_matrix_flipped[:u,u:]@adj_matrix_flipped[u:,:u], window_size, dim)
+        embedding_v, _, _, _ = deepwalk_svd(adj_matrix_flipped[u:,:u]@adj_matrix_flipped[:u,u:], window_size, dim)
+        embedding_imp = np.row_stack((embedding_u,embedding_v))
+        embedding_exp, _, _, _ = deepwalk_svd(adj_matrix_flipped, window_size, dim)
+        embedding = (embedding_imp+embedding_exp)/2
+    if train_model=='bgnn':
+        bgnn = BGNNAdversarial(u,v,batch_size,adj_matrix_flipped[:u,u:],adj_matrix_flipped[u:,:u],emb0_u,emb0_v, dim_u,dim_v, dataset)
+        embedding = bgnn.adversarial_learning()
+        
     auc_score = evaluate_embedding_link_prediction(
         adj_matrix=adj_matrix_flipped, 
         node_pairs=node_pairs, 
@@ -116,6 +138,10 @@ for _ in range(5):
     print('svd dice auc:{}'.format(auc_score))
     print('svd dice auc:{}'.format(auc_score),file=data)
 
+print(train_model)
+print(train_model,file=data)
 print('dice') 
-print('dice',file=data)    
+print('dice',file=data)
+print(dataset)
+print(dataset,file=data)    
 data.close()

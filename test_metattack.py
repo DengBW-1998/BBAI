@@ -14,6 +14,8 @@ from codes.embedding import *
 from codes.perturbation_attack import *
 from codes.testModel import *
 import time
+from BGNN.bgnn_adv import *
+from BGNN.bgnn_mlp import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=15, help='Random seed.')
@@ -32,10 +34,32 @@ args = parser.parse_args()
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 
-_,adj,gul = getAdj(0)
+ 
+dim = 64 
+window_size = 5 
+n_node_pairs = 100000 
+seed=2
+threshold = 5 #Implicit relationship threshold
+dataset='pubmed'
+rate=-1
+train_model='bgnn'
+n_flips = -1 #Perturbation number
+batch_size=64
+data=open("metattack_pubmed.txt",'w+') 
+
+if dataset=='dblp':
+    n_flips=90
+    rate=5
+if dataset=='wiki':
+    n_flips=180
+    rate=10
+if dataset=='pubmed':
+    n_flips=70
+   
+adj_nn,adj,u,v = getAdj(threshold,dataset,rate)
 adj = standardize(adj)
-u = gul.u_nodes
-v = gul.v_nodes
+
+emb0_u,emb0_v,dim_u,dim_v = getAttribut(u,v,dataset)
 time_start=time.time()
 
 labels = np.zeros((u+v))
@@ -51,7 +75,6 @@ features = sp.csr_matrix(features)
 idx = np.arange(adj.shape[0])
 idx_train, idx_val, idx_test = get_train_val_test(idx, train_size, val_size, test_size, stratify=labels)
 idx_unlabeled = np.union1d(idx_val, idx_test)
-perturbations = 180 #Perturbation number
 adj, features, labels = preprocess(adj, features, labels, preprocess_adj=False)
 
 if 'Self' in args.model:
@@ -65,20 +88,19 @@ model = Metattack(nfeat=32, hidden_sizes=[args.hidden],
                    nnodes=adj.shape[0], nclass=2, dropout=0.5,
                    train_iters=20, attack_features=False, lambda_=lambda_)
 
-def main():
-    data=open("metattack.txt",'w+')
-    
-    dim = 64 
-    window_size = 5 
-    n_node_pairs = 100000 
-    seed=0
-    
+def main():    
+   
     modified_adj = model(features, adj, labels, idx_unlabeled,
-                         idx_unlabeled, perturbations, ll_constraint=True)
+                         idx_unlabeled, n_flips, ll_constraint=True)
+    np.savetxt('metattack_modified_adj_pubmed70.dat',modified_adj.detach().numpy(),fmt='%.2f',delimiter=' ')
+    
+    #modified_adj=pd.read_csv('metattack_modified_adj_wiki10.dat',sep=' ',header=None)
+    #modified_adj=torch.tensor(np.array(modified_adj))
     adj_matrix_flipped = sp.csr_matrix(modified_adj.detach())
     
     adj_matrix_flipped[:u,:u]=0
     adj_matrix_flipped[u:,u:]=0
+    
     for _ in range(5):
         print(_)
         print(_,file=data)
@@ -86,12 +108,16 @@ def main():
         v_node_pairs = np.random.randint(u, u+v-1, [n_node_pairs*2, 1])
         node_pairs = np.column_stack((u_node_pairs,v_node_pairs))
  
-        #svd
-        embedding_u, _, _, _ = deepwalk_svd(adj_matrix_flipped[:u,u:]@adj_matrix_flipped[u:,:u], window_size, dim)
-        embedding_v, _, _, _ = deepwalk_svd(adj_matrix_flipped[u:,:u]@adj_matrix_flipped[:u,u:], window_size, dim)
-        embedding_imp = np.row_stack((embedding_u,embedding_v))
-        embedding_exp, _, _, _ = deepwalk_svd(adj_matrix_flipped, window_size, dim)
-        embedding = (embedding_imp+embedding_exp)/2
+        if train_model=='netmf':
+            embedding_u, _, _, _ = deepwalk_svd(adj_matrix_flipped[:u,u:]@adj_matrix_flipped[u:,:u], window_size, dim)
+            embedding_v, _, _, _ = deepwalk_svd(adj_matrix_flipped[u:,:u]@adj_matrix_flipped[:u,u:], window_size, dim)
+            embedding_imp = np.row_stack((embedding_u,embedding_v))
+            embedding_exp, _, _, _ = deepwalk_svd(adj_matrix_flipped, window_size, dim)
+            embedding = (embedding_imp+embedding_exp)/2
+        if train_model=='bgnn':
+            bgnn = BGNNAdversarial(u,v,batch_size,adj_matrix_flipped[:u,u:],adj_matrix_flipped[u:,:u],emb0_u,emb0_v, dim_u,dim_v, dataset)
+            embedding = bgnn.adversarial_learning()
+            
         auc_score = evaluate_embedding_link_prediction(
             adj_matrix=adj_matrix_flipped, 
             node_pairs=node_pairs, 
@@ -101,10 +127,13 @@ def main():
         print('svd meta auc:{}'.format(auc_score),file=data)
         
     time_end=time.time()
-    print('metattack') 
-    print('metattack',file=data) 
+    print(train_model)
+    print(train_model,file=data)
     print(time_end-time_start)
     print(time_end-time_start,file=data) 
+    print(dataset)
+    print(dataset,file=data)
+    
     data.close() 
 if __name__ == '__main__':
     main()
