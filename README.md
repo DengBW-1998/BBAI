@@ -8,13 +8,13 @@ If you have any question or you find any bug about codes, please contact me at w
 
 
 Some code blocks are copied from the following papers:
-> Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
-> Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
-> Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
-> Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
-> Adversarial attack on network embeddings via supervised network poisoning. Gupta V, Chakraborty T.
-> Revisiting graph adversarial attack and defense from a data distribution perspective. Li K, Liu Y, Ao X, et al.
-> Cascade-BGNN: Toward Efficient Self-supervised Representation Learning on Large-scale Bipartite Graphs. Chaoyang He, Tian Xie, Yu Rong, et al.
+- Bine: Bipartite network embedding. Gao M, Chen L, He X, et al. 
+- Adversarial attacks on node embeddings via graph poisoning. Bojchevski A, Günnemann S.
+- Adversarial Attacks and Defenses on Graphs. Jin W, Li Y, Xu H, et al.
+- Adversarial attacks on graph neural networks via meta learning. Zügner D, Günnemann S.
+- Adversarial attack on network embeddings via supervised network poisoning. Gupta V, Chakraborty T.
+- Revisiting graph adversarial attack and defense from a data distribution perspective. Li K, Liu Y, Ao X, et al.
+- Cascade-BGNN: Toward Efficient Self-supervised Representation Learning on Large-scale Bipartite Graphs. Chaoyang He, Tian Xie, Yu Rong, et al.
 
 
 ## Environment settings
@@ -52,7 +52,7 @@ If you want to calculate the parameter alpha of degree distribution:
 - python alpha_calculation.py
 
 
-## Main Hyperparameters
+## Important Hyperparameters
 
 **Ablation Experience**
 - n_flips*iteration is the actual num of perturbation
