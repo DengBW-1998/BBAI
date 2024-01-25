@@ -2,6 +2,7 @@ import random
 import numpy as np
 import scipy.sparse as sp
 from deeprobust.graph.global_attack import BaseAttack
+from memory_profiler import profile
 
 class DICE(BaseAttack):
     """As is described in ADVERSARIAL ATTACKS ON GRAPH NEURAL NETWORKS VIA META LEARNING (ICLR'19),
@@ -26,21 +27,22 @@ class DICE(BaseAttack):
     Examples
     --------
 
-    >>> from deeprobust.graph.data import Dataset
+    >>> from deeprobust.graph.data_file import Dataset
     >>> from deeprobust.graph.global_attack import DICE
     >>> data = Dataset(root='/tmp/', name='cora')
-    >>> adj, features, labels = data.adj, data.features, data.labels
+    >>> adj, features, labels = data.adj, data.features, data.test_labels
     >>> model = DICE()
     >>> model.attack(adj, labels, n_perturbations=10)
     >>> modified_adj = model.modified_adj
 
     """
-
+    @profile
     def __init__(self, model=None, nnodes=None, attack_structure=True, attack_features=False, device='cpu'):
         super(DICE, self).__init__(model, nnodes, attack_structure=attack_structure, attack_features=attack_features, device=device)
 
         assert not self.attack_features, 'DICE does NOT support attacking features'
 
+    @profile
     def attack(self, ori_adj, labels, n_perturbations, **kwargs):
         """Delete internally, connect externally. This baseline has all true class labels
         (train and test) available.
