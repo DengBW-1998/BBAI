@@ -555,8 +555,8 @@ def standardize(adj_matrix):
     return standardized_adj_matrix
 
 def getAttribut(u,v,dataset):
-    if dataset=='pubmed':
-        data = Dataset(root='./data/', name=dataset, setting='nettack')
+    if dataset=='pubmed' or dataset=='citeseer':
+        data = Dataset(root='./data/', name=dataset, setting='prognn')
         f=np.array(data.features.todense())
         emb0_u=f[:u]
         emb0_v=f[u:u+v]
