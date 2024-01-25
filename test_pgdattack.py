@@ -12,7 +12,7 @@ from codes.perturbation_attack import *
 from codes.testModel import *
 import time
 import deeprobust.graph.defense as dr
-from deeprobust.graph.global_attack import PGDAttack
+from deeprobustcopy.graph.global_attack import PGDAttack
 from sklearn.model_selection import train_test_split
 from BGNN.bgnn_adv import *
 from BGNN.bgnn_mlp import *
@@ -23,30 +23,40 @@ window_size = 5
 n_node_pairs = 100000 
 seed=2
 threshold = 5 #Implicit relationship threshold
-dataset='pubmed'
-rate=-1
-train_model='bgnn'
+dataset='citeseer'
+rate=1
+train_model='netmf'
 n_flips = -1 #Perturbation Number
 batch_size=64
-data=open("pgdattack_pubmed.txt",'w+')  
+ptb_rate=10 #rate of perturbed edges
+file_name="pgd_"+dataset+"_"+str(ptb_rate)+"_"+train_model+".txt"
+read_dir=False #reading ptb_matrix directly
+data_file=open(file_name, 'w+')
 
 if dataset=='dblp':
-    n_flips=90
+    n_flips=int(1800*ptb_rate/100)
     rate=5
+    nclass = 5
 if dataset=='wiki':
-    n_flips=180
+    n_flips=int(3600*ptb_rate/100)
     rate=10
-if dataset=='pubmed':
-    n_flips=70
+    nclass = 5
+if dataset == 'citeseer':
+    n_flips = int(2840 / 2 * ptb_rate / 100)
+    nclass = 6
+if dataset == 'pubmed':
+    n_flips = int(38782 / 2 * ptb_rate / 100)
+    nclass = 3
+n_candidates=10*n_flips #Number of candidate perturbed edges
   
-adj_nn,adj,u,v = getAdj(threshold,dataset,rate)
+adj_nn,adj,u,v,test_labels = getAdj(threshold,dataset,rate)
 adj = standardize(adj)
 
 emb0_u,emb0_v,dim_u,dim_v = getAttribut(u,v,dataset)
 time_start=time.time()
 
-labels = np.zeros((u+v))
-labels[u:] = 1
+vlabels=pd.read_csv('./data/'+dataset+'_'+'vlabels.dat',sep=' ',header=None).to_numpy().astype(int)
+vlabels=np.squeeze(vlabels)[:u+v]
 
 val_size = 0.1
 test_size = 0.8
@@ -91,25 +101,36 @@ def preprocess(adj, features, labels, preprocess_adj=False, preprocess_feature=F
 
 features = np.ones((adj.shape[0],32))
 features = sp.csr_matrix(features)
-    
-idx = np.arange(adj.shape[0])
-idx_train, idx_val, idx_test = get_train_val_test(idx, train_size, val_size, test_size, stratify=labels)
-idx_unlabeled = np.union1d(idx_val, idx_test)
 
 device = 'cpu'
-surrogate = dr.GCN(nfeat=32, nclass=2,
-            nhid=16, dropout=0, with_relu=False, with_bias=False, device=device).to(device)
-surrogate.fit(features, adj, labels, idx_train, idx_val, patience=30)
-
-model = PGDAttack(surrogate, nnodes=adj.shape[0], feature_shape=features.shape,
-    attack_structure=True, attack_features=False, device=device).to(device)
     
-model.attack(features.todense(), adj.todense(), labels, idx_train, n_perturbations=n_flips, ll_constraint=False)
-adj_matrix_flipped = sp.csr_matrix(model.modified_adj)
+idx = np.arange(adj.shape[0])
+idx_train, idx_val, idx_test = get_train_val_test(idx, train_size, val_size, test_size, stratify=vlabels)
+idx_unlabeled = np.union1d(idx_val, idx_test)
+
+
+if not read_dir:
+    surrogate = dr.GCN(nfeat=32, nclass=nclass,
+                nhid=16, dropout=0, with_relu=False, with_bias=False, device=device).to(device)
+
+    surrogate.fit(features, adj, vlabels, idx_train, idx_val, patience=30)
+
+    model = PGDAttack(surrogate, nnodes=adj.shape[0], feature_shape=features.shape,
+                      attack_structure=True, attack_features=False, device=device).to(device)
+
+    model.attack(features.todense(), adj.todense(), vlabels, idx_train, n_perturbations=n_flips, ll_constraint=False)
+    adj_matrix_flipped = sp.csr_matrix(model.modified_adj)
+    np.savetxt('./ptb_matrix/pgd_ptb_' + dataset + '_' + str(ptb_rate) + '.dat', adj_matrix_flipped.copy().toarray(),
+               fmt='%.2f', delimiter=' ')
+
+else:
+    adj_matrix_flipped = pd.read_csv('./ptb_matrix/pgd_ptb_' + dataset + '_' + str(ptb_rate) + '.dat', sep=' ',
+                                     header=None)
+    adj_matrix_flipped = sp.csr_matrix(torch.tensor(np.array(adj_matrix_flipped)))
 
 for _ in range(5):
     print(_)
-    print(_,file=data)  
+    print(_, file=data_file)
     u_node_pairs = np.random.randint(0, u-1, [n_node_pairs*2, 1])
     v_node_pairs = np.random.randint(u, u+v-1, [n_node_pairs*2, 1])
     node_pairs = np.column_stack((u_node_pairs,v_node_pairs))
@@ -126,19 +147,25 @@ for _ in range(5):
     if train_model=='bgnn':
         bgnn = BGNNAdversarial(u,v,batch_size,adj_matrix_flipped[:u,u:],adj_matrix_flipped[u:,:u],emb0_u,emb0_v, dim_u,dim_v, dataset)
         embedding = bgnn.adversarial_learning()
-        
-    auc_score = evaluate_embedding_link_prediction(
-        adj_matrix=adj_matrix_flipped, 
-        node_pairs=node_pairs, 
-        embedding_matrix=embedding
-    )
-    print('svd pgd auc:{}'.format(auc_score))
-    print('svd pgd auc:{}'.format(auc_score),file=data)
+
+    if dataset == 'dblp' or dataset == 'wiki':
+        auc_score = evaluate_embedding_link_prediction(
+            adj_matrix=adj_matrix_flipped,
+            node_pairs=node_pairs,
+            embedding_matrix=embedding
+        )
+        print('pgd auc:{:.5f}'.format(auc_score))
+        print('pgd auc:{:.5f}'.format(auc_score), file=data_file)
+    else:
+        f1_scores_mean, _ = evaluate_embedding_node_classification(embedding, test_labels)
+        print('pgd, F1: {:.5f} {:.5f}'.format(f1_scores_mean[0], f1_scores_mean[1]))
+        print('pgd, F1: {:.5f} {:.5f}'.format(f1_scores_mean[0], f1_scores_mean[1]), file=data_file)
+
 time_end=time.time()
 print(train_model)
-print(train_model,file=data)
+print(train_model, file=data_file)
 print(time_end-time_start)
-print(time_end-time_start,file=data) 
+print(time_end - time_start, file=data_file)
 print(dataset)
-print(dataset,file=data)    
-data.close()
+print(dataset, file=data_file)
+data_file.close()
