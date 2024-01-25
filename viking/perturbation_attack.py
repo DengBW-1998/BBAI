@@ -9,12 +9,12 @@ import scipy.linalg as spl
 import tensorflow as tf
 import networkx as nx
 from viking.utils import *
+from memory_profiler import profile
 
 from joblib import Memory
 
 mem = Memory(cachedir='/tmp/joblib')
-
-
+@profile
 def perturbation_top_flips_viking(adj_matrix, candidates, n_flips, dim, window_size, L=None, mode='supervised'):
     """Selects the top (n_flips) number of flips using our perturbation attack.
 
