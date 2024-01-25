@@ -447,7 +447,7 @@ def from_numpy(x, undirected=True):
 
     if issparse(x):
         cx = x.tocoo()
-        for i,j,v in zip(cx.row, cx.col, cx.data):
+        for i,j,v in zip(cx.row, cx.col, cx.data_file):
             G[i].append(j)
     else:
       raise Exception("Dense matrices not yet supported.")
