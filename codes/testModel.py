@@ -110,25 +110,29 @@ def getAdj(th,dataset,rate):
         adj_nn=adj_2_adjnn(adj,u,v,th)
         adj=sp.csr_matrix(adj)
 
-        return adj_nn,adj,u,v
+        return adj_nn,adj,u,v,None
     
-    if (dataset=='pubmed'):
-        data = Dataset(root='./data/', name=dataset, setting='nettack')
+    if (dataset=='citeseer' or dataset=='pubmed'):
+        data = Dataset(root='./data/', name=dataset, setting='prognn')
         adj = np.array(data.adj.todense())
-        if dataset=='cora':
-            u=734
-            v=877
+        #cora 2485 citeseer 2110  pubmed 19717
+        #print(adj.shape)
         if dataset=='citeseer':
-            u=613
-            v=510
+            u=1407
+            v=703
         if dataset=='pubmed':
-            u=2000
-            v=700
+            u=13145
+            v=6572
+        labels = data.labels[:u + v]
         adj=adj[:u+v,:u+v]
         adj[:u,:u]=0
         adj[u:,u:]=0
-        adj[adj>0]=(int)(1)    
+        adj[adj>0]=(int)(1)
+
+        # cora 4728//2  citeseer 2840//2  pubmed 38782//2
+        #print(sum(sum(adj)))
+
         adj_nn=adj_2_adjnn(adj,u,v,th)
         adj=sp.csr_matrix(adj)
 
-        return adj_nn,adj,u,v
+        return adj_nn,adj,u,v,labels
