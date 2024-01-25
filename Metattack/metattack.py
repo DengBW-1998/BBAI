@@ -11,6 +11,7 @@ from tqdm import tqdm
 from Metattack.utils import *
 import math
 import scipy.sparse as sp
+from memory_profiler import profile
 
 class BaseMeta(Module):
 
@@ -99,7 +100,7 @@ class BaseMeta(Module):
 
 
 class Metattack(BaseMeta):
-
+    @profile
     def __init__(self, nfeat, hidden_sizes, nclass, nnodes, dropout, train_iters,
                  attack_features, lambda_=0.5, with_relu=False, with_bias=False, lr=0.1, momentum=0.9):
 
@@ -218,7 +219,7 @@ class Metattack(BaseMeta):
 
         return adj_grad
 
-
+    @profile
     def forward(self, features, ori_adj, labels, idx_train, idx_unlabeled, perturbations, ll_constraint=True, ll_cutoff=0.004):
         self.sparse_features = sp.issparse(features)
 
