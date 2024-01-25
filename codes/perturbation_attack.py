@@ -8,6 +8,8 @@ http://proceedings.mlr.press/v97/bojchevski19a.html
 Copyright (C) owned by the authors, 2019
 """
 
+import sys
+import os
 import numba
 import numpy as np
 import scipy.sparse as sp
@@ -15,12 +17,18 @@ import scipy.linalg as spl
 import tensorflow as tf
 import networkx as nx
 from codes.utils import *
-
 from joblib import Memory
+from memory_profiler import profile
 
 mem = Memory(cachedir='/tmp/joblib')
 
 
+def output_to_file(file_path, content):
+    with open(file_path, 'a') as f:
+        f.write(content)
+
+
+@profile
 def perturbation_top_flips(adj_matrix, candidates, n_flips, dim, window_size):
     """Selects the top (n_flips) number of flips using our perturbation attack.
 
@@ -40,19 +48,22 @@ def perturbation_top_flips(adj_matrix, candidates, n_flips, dim, window_size):
     n_nodes = adj_matrix.shape[0]
     delta_w = 1 - 2 * adj_matrix[candidates[:, 0], candidates[:, 1]].A1
     deg_matrix = np.diag(adj_matrix.sum(1).A1)
-    deg_matrix = deg_matrix + 0.001*np.identity(n_nodes)
- 
-    print('deg_matrix be used')
-    print(deg_matrix[:10][:10])
-    vals_org, vecs_org = spl.eigh(adj_matrix.toarray(), deg_matrix)   
+    deg_matrix = deg_matrix + 0.001 * np.identity(n_nodes)
 
-    loss_for_candidates = estimate_loss_with_delta_eigenvals(candidates, delta_w, vals_org, vecs_org, n_nodes, dim, window_size)    
+    # print('deg_matrix be used')
+    # print(deg_matrix[:10][:10])
+    vals_org, vecs_org = spl.eigh(adj_matrix.toarray(), deg_matrix)
+
+    loss_for_candidates = estimate_loss_with_delta_eigenvals(candidates, delta_w, vals_org, vecs_org, n_nodes, dim,
+                                                             window_size)
+    # print(loss_for_candidates.argsort()[-20:])
     top_flips = candidates[loss_for_candidates.argsort()[-n_flips:]]
-    print('the first 5 top flips')
-    print(top_flips[:5])
-    return top_flips,vals_org, vecs_org
+    # print('the first 5 top flips')
+    # print(top_flips[:5])
+    return top_flips, vals_org, vecs_org
 
-def increment_perturbation_top_flips(adj_matrix, candidates, n_flips, dim, window_size,vals_org, vecs_org,flips_org):
+
+def increment_perturbation_top_flips(adj_matrix, candidates, n_flips, dim, window_size, vals_org, vecs_org, flips_org):
     """Selects the top (n_flips) number of flips using our perturbation attack.
 
     :param adj_matrix: sp.spmatrix
@@ -78,17 +89,18 @@ def increment_perturbation_top_flips(adj_matrix, candidates, n_flips, dim, windo
     delta_w = 1 - 2 * adj_matrix[candidates[:, 0], candidates[:, 1]].A1
 
     deg_matrix = np.diag(adj_matrix.sum(1).A1)
-    deg_matrix = deg_matrix + 0.001*np.identity(n_nodes)
-    
+    deg_matrix = deg_matrix + 0.001 * np.identity(n_nodes)
+
     for x in range(len(flips_org)):
         i, j = flips_org[x]
         vals_est = vals_org + delta_w[x] * (
                 2 * vecs_org[i] * vecs_org[j] - vals_org * (vecs_org[i] ** 2 + vecs_org[j] ** 2))
-   
-    loss_for_candidates = estimate_loss_with_delta_eigenvals(candidates, delta_w, vals_est, vecs_org, n_nodes, dim, window_size)    
+
+    loss_for_candidates = estimate_loss_with_delta_eigenvals(candidates, delta_w, vals_est, vecs_org, n_nodes, dim,
+                                                             window_size)
     top_flips = candidates[loss_for_candidates.argsort()[-n_flips:]]
-    return top_flips,vals_est, vecs_org
-    
+    return top_flips, vals_est, vecs_org
+
 
 @numba.jit(nopython=True)
 def estimate_loss_with_delta_eigenvals(candidates, flip_indicator, vals_org, vecs_org, n_nodes, dim, window_size):
@@ -113,14 +125,12 @@ def estimate_loss_with_delta_eigenvals(candidates, flip_indicator, vals_org, vec
     """
 
     loss_est = np.zeros(len(candidates))
-    print(len(candidates))
+    #print(len(candidates))
     for x in range(len(candidates)):
         i, j = candidates[x]
         vals_est = vals_org + flip_indicator[x] * (
                 2 * vecs_org[i] * vecs_org[j] - vals_org * (vecs_org[i] ** 2 + vecs_org[j] ** 2))
-
         vals_sum_powers = sum_of_powers(vals_est, window_size)
-
         loss_ij = np.sqrt(np.sum(np.sort(vals_sum_powers ** 2)[:n_nodes - dim]))
         loss_est[x] = loss_ij
 
@@ -356,7 +366,7 @@ def baseline_degree_top_flips(adj_matrix, candidates, n_flips, complement):
         The top edge flips from the candidate set
     """
     if complement:
-        adj_matrix = sp.csr_matrix(1-adj_matrix.toarray())
+        adj_matrix = sp.csr_matrix(1 - adj_matrix.toarray())
     deg = adj_matrix.sum(1).A1
     deg_argsort = (deg[candidates[:, 0]] + deg[candidates[:, 1]]).argsort()
 
